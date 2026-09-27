@@ -1,0 +1,36 @@
+[package]
+name = "mesh-llm-desktop"
+version = "0.76.1"
+edition = "2024"
+description = "Standalone desktop app that runs a local Mesh LLM node and shows its console"
+license = "Apache-2.0"
+repository = "https://github.com/Mesh-LLM/mesh-llm"
+homepage = "https://github.com/Mesh-LLM/mesh-llm"
+publish = false
+
+# The desktop app needs platform webview system libraries (webkit2gtk on
+# Linux), so it is deliberately kept out of the root cargo workspace. The root
+# `Cargo.toml` lists this directory under `workspace.exclude`.
+[workspace]
+
+[lints.clippy]
+cognitive_complexity = "warn"
+too_many_lines = "warn"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-opener = "2"
+tauri-plugin-single-instance = "2"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "debuginfo"

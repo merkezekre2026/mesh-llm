@@ -19,6 +19,7 @@ IMPORTS: Final = (
     "just/ci.just",
     "just/mesh-client.just",
     "just/utilities.just",
+    "just/desktop.just",
 )
 RECIPES_BY_FILE: Final = {
     "just/build.just": {
@@ -65,6 +66,9 @@ RECIPES_BY_FILE: Final = {
         "cache-prune-dry-run", "cache-status", "check-commits", "clean",
         "diff", "docker-build-client", "docker-run-client", "hooks-install",
         "llama-summary", "llama-update-pin", "stop", "test", "ui-clean",
+    },
+    "just/desktop.just": {
+        "desktop-bundle", "desktop-check", "desktop-dev", "desktop-package",
     },
 }
 RECIPE_HEADER: Final = re.compile(r"^([A-Za-z_][\w-]*)(?:\s+[^:]*)?:(?!=)")

@@ -300,6 +300,7 @@ Other top-level directories:
 - `.agents/agents/release-validation.md` — Canonical Markdown definition for the selectable release-validation specialist; it uses the canonical release-validation skill in `.agents/skills/`.
 - `.agents/skills/` — Canonical repo-local agent skills, including per-platform deploy, mesh operations, release validation, release notes, Skippy internals, patch queues, and benchmarks.
 - `sdk/` — SDK packaging for Node, Swift, Kotlin.
+- `desktop/` — Tauri desktop app that runs `mesh-llm` as a sidecar and shows its console. Its own cargo workspace, excluded from the root one; use the `just desktop-*` recipes (see `desktop/README.md`).
 - `fly/` — Fly.io deployment (console + API client apps).
 - `tools/relay-fly-legacy/` — Archived self-hosted iroh relay reference; production uses services.iroh.computer.
 - `evals/` — Benchmarking and evaluation scripts.

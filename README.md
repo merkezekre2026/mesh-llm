@@ -30,6 +30,11 @@ packages, checksums, SBOMs, and OCI images are produced by the public
 repository. See the [platform install guides](https://meshllm.cloud/docs/pages/installing-mesh/)
 for the supported package matrix and install commands.
 
+Prefer an app over the terminal? The [Mesh LLM desktop app](desktop/README.md)
+runs a node from a one-screen launcher, shows the web console in its own
+window, and keeps the node running from the system tray (macOS, Windows,
+Linux). Build its installers with `just desktop-bundle`.
+
 Finish setup:
 
 ```bash
@@ -93,6 +98,7 @@ mesh-llm serve --auto --headless
 | Attach a Flash-MoE SSD backend | `mesh-llm serve` with `[[plugin]] name = "flash-moe"` | [docs/plugins/flash-moe.md](docs/plugins/flash-moe.md) |
 | Fan out one prompt to every model in the mesh | `curl ... -d '{"model":"mesh", ...}'` | [docs/design/MOA_GATEWAY.md](docs/design/MOA_GATEWAY.md) |
 | Use Goose, OpenCode, Claude Code, or Pi | `mesh-llm goose`, `mesh-llm opencode`, `mesh-llm claude`, `mesh-llm pi` | [docs/AGENTS.md](docs/AGENTS.md) |
+| Run a node from a desktop app | `just desktop-bundle`, then install from `desktop/src-tauri/target/release/bundle/` | [desktop/README.md](desktop/README.md) |
 | Build or contribute | `just build` | [CONTRIBUTING.md](CONTRIBUTING.md) |
 
 ## How the mesh works

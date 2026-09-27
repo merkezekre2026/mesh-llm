@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mesh LLM</title>
+    <link rel="stylesheet" href="launcher.css" />
+    <script src="launcher.js" defer></script>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="brand">
+        <img src="logo.svg" alt="" width="44" height="44" />
+        <div>
+          <h1>Mesh LLM</h1>
+          <p>Pool GPUs across machines into one OpenAI-compatible API.</p>
+        </div>
+      </header>
+
+      <section id="screen-choose" class="screen" hidden>
+        <h2>How do you want to use this computer?</h2>
+        <form id="launch-form">
+          <div class="modes" role="radiogroup" aria-label="Mode">
+            <label class="mode">
+              <input type="radio" name="mode" value="client" checked />
+              <span class="mode-body">
+                <strong>Use the mesh</strong>
+                <span>Join a mesh and use its models from this computer. No GPU or model download needed.</span>
+                <code>mesh-llm client</code>
+              </span>
+            </label>
+            <label class="mode">
+              <input type="radio" name="mode" value="serve" />
+              <span class="mode-body">
+                <strong>Share my GPU</strong>
+                <span>Serve a model on this computer and contribute it to the mesh. Downloads a suitable model on first start.</span>
+                <code>mesh-llm serve</code>
+              </span>
+            </label>
+          </div>
+
+          <details class="advanced">
+            <summary>Advanced</summary>
+            <label class="field">
+              <span>Private mesh invite token</span>
+              <input id="join-token" type="password" autocomplete="off" spellcheck="false"
+                placeholder="Leave empty to join the best public mesh" />
+            </label>
+            <div class="ports">
+              <label class="field">
+                <span>Console port</span>
+                <input id="console-port" type="number" min="1" max="65535" required />
+              </label>
+              <label class="field">
+                <span>API port</span>
+                <input id="api-port" type="number" min="1" max="65535" required />
+              </label>
+            </div>
+          </details>
+
+          <label class="remember">
+            <input id="remember" type="checkbox" checked />
+            <span>Start this way automatically next time</span>
+          </label>
+
+          <p id="form-error" class="error" role="alert" hidden></p>
+          <button type="submit" class="primary">Start Mesh LLM</button>
+        </form>
+      </section>
+
+      <section id="screen-starting" class="screen" hidden>
+        <div class="spinner" aria-hidden="true"></div>
+        <h2 id="starting-title">Starting Mesh LLM…</h2>
+        <p id="starting-detail" class="muted" aria-live="polite">
+          The first start can take several minutes while a model downloads.
+        </p>
+        <div class="actions">
+          <button type="button" data-action="change-mode">Cancel</button>
+          <button type="button" data-action="open-logs" class="link">Open logs</button>
+        </div>
+      </section>
+
+      <section id="screen-ready" class="screen" hidden>
+        <h2>Mesh LLM is running</h2>
+        <p id="ready-detail" class="muted"></p>
+        <div class="actions">
+          <button type="button" id="open-console" class="primary">Open console</button>
+          <button type="button" data-action="change-mode">Change mode</button>
+        </div>
+      </section>
+
+      <section id="screen-failed" class="screen" hidden>
+        <h2>Mesh LLM could not start</h2>
+        <p id="failed-message" class="error"></p>
+        <pre id="failed-logs" class="logs" hidden></pre>
+        <div class="actions">
+          <button type="button" data-action="retry" class="primary">Try again</button>
+          <button type="button" data-action="change-mode">Change mode</button>
+          <button type="button" data-action="open-logs" class="link">Open logs</button>
+        </div>
+      </section>
+
+      <footer class="muted">
+        The app keeps running in the system tray when you close this window.
+        The OpenAI-compatible API is at <code id="api-url">http://localhost:9337/v1</code>.
+      </footer>
+    </main>
+  </body>
+</html>

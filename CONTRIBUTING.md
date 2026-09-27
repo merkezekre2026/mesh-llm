@@ -150,6 +150,24 @@ just ui-dev http://127.0.0.1:4141
 just ui-dev http://127.0.0.1:3131 5174
 ```
 
+## Desktop app workflow
+
+The Tauri desktop app lives in `desktop/` as its own cargo workspace (it is
+excluded from the root workspace because it needs platform webview libraries).
+It bundles the regular `mesh-llm` binary as a sidecar and shows the console
+that binary serves.
+
+```bash
+cargo install tauri-cli --version "^2" --locked
+just build          # debug mesh-llm product
+just desktop-dev    # run the app against target/debug/mesh-llm
+just desktop-check  # fmt, clippy -D warnings, unit tests
+just desktop-bundle # release host + runtime, then platform installers
+```
+
+See [desktop/README.md](desktop/README.md) for Linux system packages, the app
+architecture, and packaging details.
+
 ## Useful commands
 
 ```bash

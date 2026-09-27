@@ -66,6 +66,7 @@
         "LICENSE",
         "clippy.toml",
         "contrib/**",
+        "desktop/**",
         "dist/**",
         "evals/**",
         "mesh.png",

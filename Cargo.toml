@@ -71,6 +71,9 @@ members = [
     "crates/llama-quant-ffi",
     "tools/xtask",
 ]
+# The desktop app needs platform webview system libraries, so it is its own
+# cargo workspace. Build it with the `just desktop-*` recipes.
+exclude = ["desktop"]
 default-members = [
     "crates/mesh-llm",
     "crates/mesh-llm-plugin",
