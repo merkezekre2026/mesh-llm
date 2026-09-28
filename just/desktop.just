@@ -1,5 +1,5 @@
-# Mesh LLM desktop app (Tauri, desktop/). Requires the Tauri CLI
-# (`cargo install tauri-cli --version "^2" --locked`) and, on Linux, the
+# Mesh LLM desktop app (Tauri, desktop/). The Tauri CLI is pinned in
+# desktop/package-lock.json and installed with `npm ci`; Linux also needs the
 # webview system packages listed in desktop/README.md.
 
 desktop_dir := "desktop/src-tauri"
@@ -10,8 +10,9 @@ desktop-dev:
     #!/usr/bin/env bash
     set -euo pipefail
     scripts/stage-desktop-sidecar.sh --binary target/debug/mesh-llm
-    cd "{{ desktop_dir }}"
-    MESH_LLM_DESKTOP_SIDECAR="{{ justfile_directory() }}/target/debug/mesh-llm" cargo tauri dev
+    cd desktop
+    npm ci
+    MESH_LLM_DESKTOP_SIDECAR="{{ justfile_directory() }}/target/debug/mesh-llm" npm exec -- tauri dev
 
 # Build the release product for this platform and package it as desktop installers.
 [unix]
@@ -31,13 +32,15 @@ desktop-package binary runtimes="":
     stage_args=(--binary "{{ binary }}")
     [[ -n "{{ runtimes }}" ]] && stage_args+=(--runtimes "{{ runtimes }}")
     scripts/stage-desktop-sidecar.sh "${stage_args[@]}"
-    cd "{{ desktop_dir }}" && cargo tauri build
+    cd desktop
+    npm ci
+    npm exec -- tauri build
     echo "Installers: {{ desktop_dir }}/target/release/bundle/"
 
 [windows]
 desktop-package binary runtimes="":
     @powershell -NoProfile -ExecutionPolicy Bypass -File scripts/stage-desktop-sidecar.ps1 -Binary "{{ binary }}" -Runtimes "{{ runtimes }}"
-    @cd "{{ desktop_dir }}" && cargo tauri build
+    @cd desktop && npm ci && npm exec -- tauri build
 
 # Format, lint, and unit-test the desktop app (stubs the sidecar if none is staged).
 [unix]

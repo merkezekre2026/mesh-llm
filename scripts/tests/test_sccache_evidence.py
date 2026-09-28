@@ -103,6 +103,8 @@ class SccacheEvidenceTests(unittest.TestCase):
             ("ci-windows-runtime-slice.yml", "windows_runtime"): policy,
             ("cache-warm-sccache.yml", "warm"): "false",
             ("depot-canary.yml", "runtime_seed"): "false",
+            # Manual desktop packaging keeps its compiler cache job-local.
+            ("desktop-packages.yml", "package"): "false",
             ("hf-download-smoke.yml", "hf_download_smoke"): "true",
             ("native-sdk-artifact.yml", "linux_native_sdk_artifact"): policy,
             ("native-sdk-artifact.yml", "macos_native_sdk_artifact"): policy,

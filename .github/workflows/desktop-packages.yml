@@ -1,0 +1,226 @@
+name: Desktop · Installers
+
+# Manual, non-required packaging entry outside the PR/main lanes. It wraps an
+# already published stable release: the exact mesh-llm host and native runtime
+# bytes from that release's archives (verified against their .sha256 sidecars)
+# become the desktop app's sidecar, so no mesh-llm build command is forked here.
+# Linux installers are deferred until the runner images carry the webview
+# system packages Tauri needs; see desktop/README.md.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published stable release tag to package, for example v0.77.0
+        required: true
+        type: string
+      attach_to_release:
+        description: Upload the installers to that GitHub release (default branch only)
+        required: true
+        default: false
+        type: boolean
+
+concurrency:
+  group: desktop-packages-${{ github.repository }}-${{ inputs.tag }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  resolve:
+    name: Resolve release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - name: Validate tag and confirm the release exists
+        id: release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "tag must be a stable release tag such as v0.77.0; MSI installers cannot carry prerelease versions" >&2
+            exit 1
+          fi
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json tagName > /dev/null
+          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${RELEASE_TAG#v}" >> "$GITHUB_OUTPUT"
+
+  package:
+    name: Package ${{ matrix.name }}
+    needs: resolve
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS aarch64 Metal
+            id: macos-aarch64
+            os: macos-15
+            target: aarch64-apple-darwin
+            archive_ext: tar.gz
+            python: python3
+            bundles: dmg
+          - name: Windows x86_64 CPU
+            id: windows-x86_64
+            os: windows-2022
+            target: x86_64-pc-windows-msvc
+            archive_ext: zip
+            python: python
+            bundles: msi,nsis
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+
+      - name: Download and verify the release product
+        id: product
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.resolve.outputs.tag }}
+          TARGET: ${{ matrix.target }}
+          ARCHIVE_EXT: ${{ matrix.archive_ext }}
+          PYTHON: ${{ matrix.python }}
+        run: |
+          set -euo pipefail
+          asset="mesh-llm-${RELEASE_TAG}-${TARGET}.${ARCHIVE_EXT}"
+          download_dir="$RUNNER_TEMP/release"
+          mkdir -p "$download_dir"
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+            --dir "$download_dir" --pattern "$asset" --pattern "$asset.sha256"
+          bundle="$("$PYTHON" scripts/unpack-release-product.py \
+            "$download_dir/$asset" "$RUNNER_TEMP/product")"
+          echo "bundle=$bundle" >> "$GITHUB_OUTPUT"
+
+      - name: Use the repository macOS deployment target
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "MACOSX_DEPLOYMENT_TARGET=$(tr -d '[:space:]' < scripts/lib/macos-deployment-target.txt)" >> "$GITHUB_ENV"
+
+      - uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable 2026-08-20
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.20.0
+      # .cargo/config.toml makes sccache the repository-wide rustc wrapper.
+      # Job-local only: this workflow publishes no shared compiler cache.
+      - uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+      - uses: ./.github/actions/configure-sccache-gha
+        with:
+          allow_depot_remote_cache: "false"
+          allow_native_github_cache: "false"
+
+      - name: Install the pinned Tauri CLI
+        working-directory: desktop
+        shell: bash
+        run: npm ci
+
+      - name: Stage the release product as the app sidecar
+        if: runner.os != 'Windows'
+        shell: bash
+        env:
+          BUNDLE: ${{ steps.product.outputs.bundle }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          scripts/stage-desktop-sidecar.sh --binary "$BUNDLE/mesh-llm" \
+            --runtimes "$BUNDLE/native-runtimes" --target "$TARGET"
+
+      - name: Stage the release product as the app sidecar
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          BUNDLE: ${{ steps.product.outputs.bundle }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          ./scripts/stage-desktop-sidecar.ps1 -Binary (Join-Path $env:BUNDLE "mesh-llm.exe") `
+            -Runtimes (Join-Path $env:BUNDLE "native-runtimes") -Target $env:TARGET
+
+      - name: Build installers
+        working-directory: desktop
+        shell: bash
+        env:
+          BUNDLES: ${{ matrix.bundles }}
+          VERSION: ${{ needs.resolve.outputs.version }}
+        run: |
+          set -euo pipefail
+          npm exec -- tauri build --bundles "$BUNDLES" --config "{\"version\":\"$VERSION\"}"
+
+      - name: Name installers and write checksums
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+          VERSION: ${{ needs.resolve.outputs.version }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          bundle_root="desktop/src-tauri/target/release/bundle"
+          out="$RUNNER_TEMP/installers"
+          mkdir -p "$out"
+          stem="mesh-llm-desktop-${VERSION}-${TARGET}"
+          for file in "$bundle_root"/dmg/*.dmg; do cp "$file" "$out/$stem.dmg"; done
+          for file in "$bundle_root"/msi/*.msi; do cp "$file" "$out/$stem.msi"; done
+          for file in "$bundle_root"/nsis/*.exe; do cp "$file" "$out/$stem-setup.exe"; done
+          installers=("$out"/*)
+          if [[ ${#installers[@]} -eq 0 ]]; then
+            echo "tauri build produced no installers under $bundle_root" >&2
+            exit 1
+          fi
+          for file in "${installers[@]}"; do
+            if command -v shasum > /dev/null 2>&1; then
+              digest="$(shasum -a 256 "$file" | awk '{print tolower($1)}')"
+            else
+              digest="$(sha256sum "$file" | awk '{print tolower($1)}')"
+            fi
+            printf '%s  %s\n' "$digest" "$(basename "$file")" > "$file.sha256"
+          done
+          ls -l "$out"
+
+      - name: Upload installers
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: desktop-installers-${{ matrix.id }}
+          path: ${{ runner.temp }}/installers/*
+          if-no-files-found: error
+          retention-days: 14
+
+  attach:
+    name: Attach installers to the release
+    needs: [resolve, package]
+    if: ${{ inputs.attach_to_release && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - name: Download installers
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: desktop-installers-*
+          path: installers
+          merge-multiple: true
+
+      - name: Upload installers to the release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.resolve.outputs.tag }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(installers/mesh-llm-desktop-*)
+          if [[ ${#files[@]} -eq 0 ]]; then
+            echo "no installers to attach" >&2
+            exit 1
+          fi
+          gh release upload "$RELEASE_TAG" "${files[@]}" --repo "$GITHUB_REPOSITORY" --clobber

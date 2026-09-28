@@ -1,0 +1,12 @@
+{
+  "name": "mesh-llm-desktop",
+  "private": true,
+  "description": "Pins the Tauri CLI used to build and package the Mesh LLM desktop app",
+  "license": "Apache-2.0",
+  "scripts": {
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.12.0"
+  }
+}

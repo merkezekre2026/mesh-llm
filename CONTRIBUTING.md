@@ -158,15 +158,16 @@ It bundles the regular `mesh-llm` binary as a sidecar and shows the console
 that binary serves.
 
 ```bash
-cargo install tauri-cli --version "^2" --locked
 just build          # debug mesh-llm product
 just desktop-dev    # run the app against target/debug/mesh-llm
 just desktop-check  # fmt, clippy -D warnings, unit tests
 just desktop-bundle # release host + runtime, then platform installers
 ```
 
-See [desktop/README.md](desktop/README.md) for Linux system packages, the app
-architecture, and packaging details.
+The recipes install the Tauri CLI pinned in `desktop/package-lock.json` with
+`npm ci`. See [desktop/README.md](desktop/README.md) for Linux system packages,
+the app architecture, packaging details, and the manual **Desktop · Installers**
+CI workflow that packages a published release for macOS and Windows.
 
 ## Useful commands
 

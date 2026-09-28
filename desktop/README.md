@@ -69,8 +69,9 @@ Sidecar output is written to `mesh-llm.log` in the app log directory
 
 ## Prerequisites
 
-- Rust (the repository toolchain) and the Tauri CLI:
-  `cargo install tauri-cli --version "^2" --locked`
+- Rust (the repository toolchain) and Node.js 24. The Tauri CLI is pinned in
+  `desktop/package-lock.json`; the `just desktop-*` recipes install it with
+  `npm ci`.
 - Linux: `libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev`
   (Debian/Ubuntu package names). Without an appindicator host the app has no
   tray icon and closing the window quits it.
@@ -121,3 +122,30 @@ xattr -cr "Mesh LLM Desktop.app"
 
 The app version comes from `src-tauri/Cargo.toml`. Keep it in step with the
 workspace version in the root `Cargo.toml`.
+
+## Installers from CI
+
+The **Desktop · Installers** workflow (`.github/workflows/desktop-packages.yml`)
+builds installers for an already published stable release. Run it from the
+Actions tab with:
+
+- `tag`: the release to package, for example `v0.77.0`
+- `attach_to_release`: also upload the installers to that GitHub release (only
+  honoured when the workflow runs from the default branch)
+
+It downloads that release's macOS aarch64 Metal and Windows x86_64 CPU archives,
+checks them against their `.sha256` files, and packages the exact mesh-llm host
+and runtime inside the app. It never rebuilds mesh-llm. The installers are
+`mesh-llm-desktop-<version>-aarch64-apple-darwin.dmg`,
+`mesh-llm-desktop-<version>-x86_64-pc-windows-msvc.msi` and
+`mesh-llm-desktop-<version>-x86_64-pc-windows-msvc-setup.exe`, each with a
+`.sha256` file. They are kept as workflow artifacts for 14 days.
+
+Current limits:
+
+- The installers are not code-signed. macOS needs the `codesign`/`xattr` steps
+  above, and Windows SmartScreen will warn on first run.
+- Linux installers are not built in CI yet. Tauri's Linux build needs the
+  webview packages listed above, and CI jobs must get system packages from the
+  shared runner images rather than installing them per job. Build Linux
+  packages locally with `just desktop-bundle` until the images carry them.

@@ -34,6 +34,7 @@ row. It does not select host/native product builds by itself.
 | `ci-control.yml` (`CI · Manual Full`) | dispatch on default branch | Explicit operator-only full plan, bounded lane dispatch and correlated diagnostic checks |
 | `release.yml` | dispatch on the default branch | Canonical version synchronization, release-only signing, assets, publication, post-publish release-notes regrouping, and a preflighted downstream `mesh-packaging` dispatch |
 | `resume-crates-release.yml` (`Release · Resume crates.io`) | dispatch on the default branch | Exact-tag, exact-SHA recovery for a partially published stable crates.io chain; uses the immutable release source and the trusted default-branch publisher script |
+| `desktop-packages.yml` (`Desktop · Installers`) | dispatch with a stable release `tag` and `attach_to_release` | Non-required desktop installer packaging from an existing release; see "Desktop installers" below |
 | `website-pages.yml` | main website paths, dispatch | Public website deployment |
 | `pr_cleanup.yml` | PR close, dispatch | Positively matched cleanup only |
 | `pr_auto_assign.yml` | PR lifecycle | Metadata only |
@@ -340,6 +341,30 @@ log visibility are contractual, not a presentation preference. The retained
 `ci.yml` is reusable-only migration scaffolding and must never regain event
 triggers or call the five lanes; remove it after the protected-main
 runner-contract update is active.
+
+### Desktop installers
+
+`desktop-packages.yml` packages the Tauri app in `desktop/` around an already
+published stable release; it never compiles mesh-llm. `resolve` rejects tags
+outside `^v[0-9]+\.[0-9]+\.[0-9]+$` (MSI versions cannot carry prerelease
+suffixes) and confirms the release exists. The `package` matrix runs on fixed
+GitHub-hosted `macos-15` (aarch64 Metal, `.dmg`) and `windows-2022` (x86_64 CPU,
+`.msi` + NSIS `.exe`) runners without `select-ci-runners`. Each row downloads the
+release archive and its `.sha256` sidecar, verifies and safely unpacks it with
+`scripts/unpack-release-product.py`, and stages the exact host and runtime bytes
+with `scripts/stage-desktop-sidecar.{sh,ps1}`. The Tauri CLI comes from
+`desktop/package-lock.json` via `npm ci`. sccache is initialized job-local with
+both remote-cache inputs `"false"`, and macOS uses
+`scripts/lib/macos-deployment-target.txt`. Installers are renamed
+`mesh-llm-desktop-<version>-<target>` with `.sha256` sidecars and uploaded for 14
+days. Top-level permissions are `contents: read`; only `attach` holds
+`contents: write`, and it runs only when `attach_to_release` is true on the
+default branch and every package row succeeded. No signing secrets are used, so
+installers are unsigned. Tauri's Windows bundler downloads its own pinned WiX
+and NSIS toolsets during `tauri build`. Linux (`.deb`/`.AppImage`) is deferred:
+Tauri needs webkit2gtk system packages, which belong in `mesh-llm-runner-images`
+rather than a job-level `apt` step. `scripts/tests/test_desktop_packages_workflow.py`
+pins these properties.
 
 ## Reusable workflows and slices
 
